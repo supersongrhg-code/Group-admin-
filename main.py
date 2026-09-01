@@ -2,6 +2,7 @@ import os
 import asyncio
 from datetime import datetime, timedelta
 from telethon import TelegramClient, events, functions
+from telethon.sessions import StringSession
 from telethon.tl.types import ChatBannedRights
 
 # Config from Railway Environment Variables
@@ -12,8 +13,7 @@ SESSION_STRING = os.environ.get("SESSION_STRING")
 # Target Group ID
 TARGET_GROUP_ID = int(os.environ.get("TARGET_GROUP_ID", "-1003928377196"))
 
-# Yahan doston ki Telegram User IDs daalein
-# Agar dost ko apni ID nahi pata, toh wo PM me "/id" bhej kar check kar sakta hai
+# Yahan doston ki Telegram User IDs
 ALLOWED_USERS = [
     8988599574,  # Dost 1
     8401097557   # Dost 2
@@ -65,9 +65,9 @@ async def handle_commands(event):
     sender_id = event.sender_id
     raw_text = event.raw_text.strip()
 
-    # --- ID Check Command (Har koi apni ID dekh sake) ---
+    # --- ID Check (Dost apni numeric ID jaan sake) ---
     if raw_text.lower() in ["/id", "/myid"]:
-        await event.reply(f"🆔 **Aapki Asli Telegram ID hai:** `{sender_id}`")
+        await event.reply(f"🆔 **Aapki Asli Telegram ID:** `{sender_id}`")
         return
 
     # Authorized user check
@@ -83,18 +83,17 @@ async def handle_commands(event):
     # --- 1. /cmm (DIRECT GROUP MESSAGE/COMMAND RELAY) ---
     if cmd == "/cmm":
         if len(parts) < 2:
-            await event.reply("⚠️ **Format:** `/cmm <kuch bhi message ya command>`\n*Example:* `/cmm /lock` ya `/cmm Hello guys`")
+            await event.reply("⚠️ **Format:** `/cmm <kuch bhi>`\n*Example:* `/cmm /lock` ya `/cmm Hello guys`")
             return
-        # /cmm ke baad ka saara text nikaalo
         relay_payload = raw_text.split(None, 1)[1]
         try:
             await client.send_message(TARGET_GROUP_ID, relay_payload)
-            await event.reply(f"✅ **Group me bhej diya:**\n`{relay_payload}`")
+            await event.reply(f"✅ Group me bhej diya:\n`{relay_payload}`")
         except Exception as e:
             await event.reply(f"❌ Error: `{str(e)}`")
 
-    # --- 2. /lock (Group chat band karega) ---
-    elif cmd == "/lock":
+    # --- 2. /lock ---
+    elif cmd in ["/lock", "/lock all"]:
         try:
             group_peer = await client.get_input_entity(TARGET_GROUP_ID)
             await client(functions.messages.EditChatDefaultBannedRightsRequest(
@@ -106,8 +105,8 @@ async def handle_commands(event):
         except Exception as e:
             await event.reply(f"❌ Error: `{str(e)}`")
 
-    # --- 3. /unlock (Group chat kholega) ---
-    elif cmd == "/unlock":
+    # --- 3. /unlock ---
+    elif cmd in ["/unlock", "/unlock all"]:
         try:
             group_peer = await client.get_input_entity(TARGET_GROUP_ID)
             await client(functions.messages.EditChatDefaultBannedRightsRequest(
@@ -173,9 +172,9 @@ async def handle_commands(event):
     elif cmd in ["/help", "/start"]:
         msg = (
             "🛡️ **Admin Relay Control**\n\n"
-            "• `/cmm <kuch bhi>` - Exact message/command group me send karega\n"
-            "• `/lock` - Group band karega\n"
-            "• `/unlock` - Group kholega\n"
+            "• `/cmm <kuch bhi>` - Exact text/command group me bhejega\n"
+            "• `/lock` ya `/lock all` - Group band karega\n"
+            "• `/unlock` ya `/unlock all` - Group kholega\n"
             "• `/ban <username/id>` - User ban\n"
             "• `/unban <username/id>` - User unban\n"
             "• `/mute <username/id>` - User mute\n"
